@@ -153,3 +153,56 @@ def test_inception_agent_handles_invalid_json_in_tasks():
     assert isinstance(result, list)
     assert len(result) == 1
     assert result[0].description == "Implement the project based on requirements"
+
+
+def test_inception_agent_process_with_partial_failures():
+    """Test that process continues even if some generations fail."""
+    mock_llm = Mock()
+
+    # Mock responses with one failure (use ValueError to avoid retries)
+    mock_llm.invoke.side_effect = [
+        AIMessage(content="# Requirements\n\nTest requirements"),
+        ValueError("Authentication error for acceptance criteria"),
+        AIMessage(content="# Architecture\n\nTest architecture"),
+        AIMessage(content='[{"id": "task-1", "description": "Task 1", "dependencies": []}]'),
+    ]
+
+    agent = InceptionAgent(llm=mock_llm)
+
+    state = WorkflowState(
+        workflow_id="wf-123",
+        user_requirements="Build a simple calculator",
+        phase="inception",
+        current_step="start",
+        human_approval_needed=False,
+        approval_status="pending",
+        human_feedback=None,
+        requirements_doc=None,
+        acceptance_criteria=None,
+        architecture=None,
+        tasks=None,
+        generated_code=None,
+        test_results=None,
+        code_changes_pending=False,
+        deployment_docs=None,
+        monitoring_plan=None,
+        errors=[],
+        retry_count=0,
+        requirement_changes=None,
+        impact_analysis=None,
+        replanned_tasks=None,
+        replanning_reason=None,
+        metadata=None,
+    )
+
+    result = agent.process(state)
+
+    # Should have generated some outputs despite one failure
+    assert result["requirements_doc"] is not None
+    assert result["architecture"] is not None
+    assert result["tasks"] is not None
+    # Acceptance criteria should be None due to error
+    assert result["acceptance_criteria"] is None
+    # Should have errors in the result
+    assert "errors" in result
+    assert len(result["errors"]) == 1

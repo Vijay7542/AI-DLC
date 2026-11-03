@@ -47,6 +47,8 @@ htmlcov/
 *.db
 *.sqlite
 *.sqlite3
+checkpoints.db
+manual_checkpoints.db
 
 # Logs
 *.log

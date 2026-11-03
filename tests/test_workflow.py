@@ -13,6 +13,7 @@ def test_create_initial_state():
     state = create_initial_state("Build a calculator")
 
     assert state["workflow_id"] is not None
+    assert state["thread_id"] is not None
     assert state["user_requirements"] == "Build a calculator"
     assert state["phase"] == "inception"
     assert state["current_step"] == "start"
@@ -45,12 +46,13 @@ def test_workflow_execution(mock_inception_agent_class):
     mock_inception_agent_class.return_value = mock_agent
 
     # Run workflow
-    result = run_workflow("Build a calculator")
+    result, thread_id = run_workflow("Build a calculator", checkpoint_path=":memory:")
 
     assert result["requirements_doc"] == "# Requirements"
     assert result["human_approval_needed"] is True
     assert result["approval_status"] == "pending"
-    assert result["current_step"] == "inception_complete"
+    assert result["current_step"] == "awaiting_approval"  # Updated to match new workflow
+    assert thread_id is not None
 
 
 @patch("graph.workflow.InceptionAgent")
@@ -72,7 +74,7 @@ def test_workflow_execution_with_tasks(mock_inception_agent_class):
     mock_inception_agent_class.return_value = mock_agent
 
     # Run workflow
-    result = run_workflow("Build a calculator")
+    result, thread_id = run_workflow("Build a calculator", checkpoint_path=":memory:")
 
     assert result["tasks"] is not None
     assert len(result["tasks"]) == 1
@@ -96,6 +98,7 @@ def test_initial_state_has_all_required_fields():
 
     required_fields = [
         "workflow_id",
+        "thread_id",
         "user_requirements",
         "phase",
         "current_step",

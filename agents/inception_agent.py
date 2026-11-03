@@ -6,10 +6,13 @@ Designed to be modular for future requirement change detection and impact analys
 
 import json
 import uuid
+import logging
 from typing import Any, List
 from graph.state import WorkflowState, Task
 from agents.base_agent import BaseAgent
 from langchain_core.messages import BaseMessage
+
+logger = logging.getLogger(__name__)
 
 
 class InceptionAgent(BaseAgent):
@@ -36,23 +39,69 @@ class InceptionAgent(BaseAgent):
             State updates with inception outputs
         """
         user_requirements = state["user_requirements"]
+        human_feedback = state.get("human_feedback")
 
-        # Generate inception outputs
-        requirements_doc = self._generate_requirements_doc(user_requirements)
-        acceptance_criteria = self._generate_acceptance_criteria(user_requirements)
-        architecture = self._generate_architecture(user_requirements)
-        tasks = self._generate_tasks(user_requirements)
+        # If there's human feedback, incorporate it into requirements
+        if human_feedback:
+            user_requirements = f"{user_requirements}\n\nHuman feedback for revision:\n{human_feedback}"
 
-        # Set approval flag for human review
-        return {
+        # Generate inception outputs with error handling
+        # Continue generation even if one step fails
+        errors = []
+
+        try:
+            logger.info("Generating requirements document...")
+            requirements_doc = self._generate_requirements_doc(user_requirements)
+            logger.info(f"Requirements doc generated, length: {len(requirements_doc) if requirements_doc else 0}")
+        except Exception as e:
+            requirements_doc = None
+            logger.error(f"Requirements generation failed: {str(e)}")
+            errors.append(f"Requirements generation failed: {str(e)}")
+
+        try:
+            logger.info("Generating acceptance criteria...")
+            acceptance_criteria = self._generate_acceptance_criteria(user_requirements)
+            logger.info(f"Acceptance criteria generated, count: {len(acceptance_criteria) if acceptance_criteria else 0}")
+        except Exception as e:
+            acceptance_criteria = None
+            logger.error(f"Acceptance criteria generation failed: {str(e)}")
+            errors.append(f"Acceptance criteria generation failed: {str(e)}")
+
+        try:
+            logger.info("Generating architecture...")
+            architecture = self._generate_architecture(user_requirements)
+            logger.info(f"Architecture generated, length: {len(architecture) if architecture else 0}")
+        except Exception as e:
+            architecture = None
+            logger.error(f"Architecture generation failed: {str(e)}")
+            errors.append(f"Architecture generation failed: {str(e)}")
+
+        try:
+            logger.info("Generating tasks...")
+            tasks = self._generate_tasks(user_requirements)
+            logger.info(f"Tasks generated, count: {len(tasks) if tasks else 0}")
+        except Exception as e:
+            tasks = None
+            logger.error(f"Task generation failed: {str(e)}")
+            errors.append(f"Task generation failed: {str(e)}")
+
+        # Reset approval status for new review
+        result = {
             "requirements_doc": requirements_doc,
             "acceptance_criteria": acceptance_criteria,
             "architecture": architecture,
-            "tasks": tasks,
+            "tasks": [task.model_dump() for task in tasks] if tasks else None,
             "human_approval_needed": True,
             "approval_status": "pending",
             "current_step": "inception_complete",
+            "human_feedback": None,  # Clear feedback after processing
         }
+
+        # Add errors if any occurred
+        if errors:
+            result["errors"] = errors
+
+        return result
 
     def _generate_requirements_doc(self, user_requirements: str) -> str:
         """Generate a structured requirements document.

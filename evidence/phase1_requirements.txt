@@ -1,0 +1,31 @@
+
+Build a comprehensive Task Management application with the following features:
+
+1. User Management:
+   - User registration with email and password
+   - User login with authentication
+   - User profile management
+
+2. Task Management:
+   - Create tasks with title, description, priority, and due date
+   - Update task details
+   - Delete tasks
+   - Retrieve all tasks
+   - Retrieve single task by ID
+   - Mark tasks as complete/incomplete
+
+3. Data Storage:
+   - Use SQLite for data persistence
+   - Ensure data integrity with proper constraints
+
+4. API Requirements:
+   - RESTful API endpoints for all operations
+   - Proper HTTP status codes
+   - JSON request/response format
+   - Error handling with meaningful messages
+
+5. Technology Stack:
+   - Python 3.11+
+   - Flask for REST API
+   - SQLite for database
+   - Follow best practices and clean code principles
